@@ -484,7 +484,6 @@ def gen_edge_fused_tw(indexid2msg, cfg):
 
                     # log(f"Saving graph for {time_interval}")
                     torch.save(graph, graph_name)
-                    visualize_subgraph(graph_name)
 
                     # log(f"[{time_interval}] Num of edges: {len(edge_list)}")
                     # log(f"[{time_interval}] Num of events: {len(temp_list)}")
