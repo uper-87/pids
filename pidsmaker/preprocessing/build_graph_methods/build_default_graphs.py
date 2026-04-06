@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 import networkx as nx
 import torch
+import matplotlib.pyplot as plt
 
 import pidsmaker.mimicry as mimicry
 from pidsmaker.config import get_darpa_tc_node_feats_from_cfg, get_dates_from_cfg
@@ -146,17 +147,17 @@ def save_indexid2msg(indexid2msg, split2nodes, cfg):
 
 
 def compute_and_save_split2nodes(cfg):
-    """Compute and save mapping of dataset splits to their node sets.
+    """计算并保存数据集划分到其对应节点集合的映射。
 
-    Loads all graphs from train/val/test splits and collects unique node IDs
-    appearing in each split. Used to filter node features and track split membership.
+    从训练集/验证集/测试集加载所有图谱，收集每个划分中出现的唯一节点ID。
+    用于过滤节点特征，并追踪节点所属的数据集划分。
 
-    Args:
-        cfg: Configuration with graph directory and split file paths
+    参数：
+        cfg: 包含图谱存储目录与划分文件路径的配置项
 
-    Returns:
-        dict: Mapping of split names to node sets:
-            {'train': {node_ids}, 'val': {node_ids}, 'test': {node_ids}}
+    返回：
+        dict: 数据集划分名称到节点集合的映射：
+            {'train': {节点ID集合}, 'val': {节点ID集合}, 'test': {节点ID集合}}
     """
     split_to_files = get_split_to_files(cfg, cfg.construction._graphs_dir)
     split2nodes = defaultdict(set)
@@ -194,6 +195,24 @@ def gen_edge_fused_tw(indexid2msg, cfg):
             - Edge type filtering (rel2id)
             - Mimicry settings (mimicry_edge_num)
             - Output directory paths
+    根据数据库事件生成带时间窗口的溯源图。
+
+    核心图构建函数，功能包括：
+    1. 按时间窗口从数据库查询事件
+    2. 可选：对节点对之间相同类型的连续边进行融合
+    3. 可选：添加攻击模拟事件用于数据增强
+    4. 构建包含节点属性与边元信息的 NetworkX 多重有向图（MultiDiGraph）
+    5. 按日期与时间窗口组织并将图保存到磁盘
+
+    参数：
+        indexid2msg: 由 compute_indexid2msg() 得到的「节点编号 → [类型, 标签]」映射
+        cfg: 配置项，包含：
+            - 数据库连接参数
+            - 时间窗口参数（窗口大小、起止日期）
+            - 边类型过滤（rel2id）
+            - 攻击模拟参数（mimicry_edge_num）
+            - 输出目录路径
+
     """
     cur, connect = init_database_connection(cfg)
     rel2id = get_rel2id(cfg)
@@ -214,6 +233,14 @@ def gen_edge_fused_tw(indexid2msg, cfg):
 
         Yields:
             list: Batches of size batch_size (last batch may be smaller)
+        从数组中按指定大小连续生成批次数据。
+
+        参数：
+            arr：待分批的输入数组
+            batch_size：每批次包含的元素数量
+        
+        生成：
+            list：大小为 batch_size 的批次数据（最后一批可能元素更少）
         """
         for i in range(0, len(arr), batch_size):
             yield arr[i : i + batch_size]
@@ -457,6 +484,7 @@ def gen_edge_fused_tw(indexid2msg, cfg):
 
                     # log(f"Saving graph for {time_interval}")
                     torch.save(graph, graph_name)
+                    visualize_subgraph(graph_name)
 
                     # log(f"[{time_interval}] Num of edges: {len(edge_list)}")
                     # log(f"[{time_interval}] Num of events: {len(temp_list)}")
@@ -468,6 +496,47 @@ def gen_edge_fused_tw(indexid2msg, cfg):
                     if cfg._test_mode:
                         test_mode_set_done = True
                         break
+
+
+def visualize_subgraph(graph_path, num_nodes=50):
+    """
+    可视化保存的图的一部分。
+
+    参数：
+        graph_path (str): 图文件的路径。
+        num_nodes (int): 要可视化的节点数量。
+    """
+    # 加载图
+    graph = torch.load(graph_path)
+
+    # 提取子图
+    sub_nodes = list(graph.nodes)[:num_nodes]  # 选择前 num_nodes 个节点
+    subgraph = graph.subgraph(sub_nodes)
+
+    # 绘制图
+    plt.figure(figsize=(12, 8))
+    pos = nx.spring_layout(subgraph)  # 使用 spring 布局
+    nx.draw(
+        subgraph,
+        pos,
+        with_labels=True,
+        node_size=500,
+        node_color="skyblue",
+        font_size=10,
+        font_color="black",
+        edge_color="gray",
+    )
+
+    # 添加节点类型标签
+    node_labels = nx.get_node_attributes(subgraph, "node_type")
+    nx.draw_networkx_labels(subgraph, pos, labels=node_labels, font_size=8)
+
+    # 添加边标签
+    edge_labels = nx.get_edge_attributes(subgraph, "label")
+    nx.draw_networkx_edge_labels(subgraph, pos, edge_labels=edge_labels, font_size=8)
+
+    plt.title("Subgraph Visualization")
+    plt.show()
 
 
 def main(cfg):
