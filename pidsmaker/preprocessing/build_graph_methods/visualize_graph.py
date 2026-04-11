@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import torch
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -68,7 +70,7 @@ def main():
     主函数：列出图文件并选择可视化。
     """
     # 修改为实际的图文件目录
-    graph_dir = "example_graph_directory"
+    graph_dir = "/home/pids/artifacts/construction/optc_h501/construction/c3f3165f1d82cab33612a1436909d57d0846d69379ace2964781ab158f0656c2/nx/graph_2019-09-24"
 
     # 列出所有图文件
     graph_files = list_graph_files(graph_dir)
