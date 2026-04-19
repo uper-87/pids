@@ -117,7 +117,6 @@ def load_all_datasets(cfg, device, only_keep=None):
     # Apply data sampling based on priority: explicit only_keep > data_sampling_ratio
     if only_keep is not None:
         # Priority 1: Legacy behavior - use explicit only_keep value for all datasets
-        log(f"Using explicit only_keep={only_keep} for all datasets (legacy mode)")
         train_data = train_data[:only_keep]
         val_data = val_data[:only_keep]
         test_data = test_data[:only_keep]
@@ -129,10 +128,7 @@ def load_all_datasets(cfg, device, only_keep=None):
             train_size = len(train_data) if isinstance(train_data, list) else len(train_data[0]) if train_data else 0
             train_keep = max(1, int(train_size * sampling_ratio))
             
-            log(f"Data sampling enabled: using {sampling_ratio*100:.0f}% of training data")
-            log(f"  Training: {train_keep}/{train_size} graphs")
-            log(f"  Validation & Test: keeping full datasets for accurate evaluation")
-            
+            print(f"Sampling {train_keep} events from {train_size} events for training set")            
             # Apply sampling to training set only (best practice for evaluation integrity)
             train_data = train_data[:train_keep]
 
