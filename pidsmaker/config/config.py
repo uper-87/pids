@@ -755,7 +755,7 @@ TASK_ARGS = {
         ),
         "data_sampling_ratio": Arg(
             float,
-            desc="Ratio of training data to use (0.0-1.0). Set to 0.25 to use only 25% of data to reduce memory usage.",
+            desc="Ratio of data to use for all splits (train/val/test) (0.0-1.0). Set to 0.25 to use only 25% of data to reduce memory usage.",
         ),
         "node_features": Arg(
             str,

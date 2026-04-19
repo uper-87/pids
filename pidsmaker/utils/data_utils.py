@@ -122,36 +122,62 @@ def load_all_datasets(cfg, device, only_keep=None):
         val_data = val_data[:only_keep]
         test_data = test_data[:only_keep]
     else:
-        # Priority 2: Use data_sampling_ratio for training set only
+        # Priority 2: Use data_sampling_ratio for all datasets (train/val/test)
         sampling_ratio = getattr(cfg.batching, 'data_sampling_ratio', 1.0)
         if sampling_ratio < 1.0 and sampling_ratio > 0.0:
-            # Calculate sample size for training set based on sampling ratio
+            # Calculate sample size based on sampling ratio
             # Note: load_data_set returns a list of lists when multi_dataset=True
             # For single dataset, it returns [[actual_data_list]]
             if multi_dataset:
-                # Multi-dataset case: train_data is a list of data lists
-                train_size = sum(len(ds) for ds in train_data)
-                train_keep_per_dataset = max(1, int(train_size * sampling_ratio / len(train_data)))
+                # Multi-dataset case: each dataset is a list of data lists
+                train_sizes = [len(ds) for ds in train_data]
+                val_sizes = [len(ds) for ds in val_data]
+                test_sizes = [len(ds) for ds in test_data]
                 
-                log(f"Data sampling enabled (multi-dataset): using {sampling_ratio*100:.0f}% of training data")
-                log(f"  Total training events: {train_size}")
-                log(f"  Events per dataset: {train_keep_per_dataset}")
+                train_keep_per_dataset = [max(1, int(size * sampling_ratio)) for size in train_sizes]
+                val_keep_per_dataset = [max(1, int(size * sampling_ratio)) for size in val_sizes]
+                test_keep_per_dataset = [max(1, int(size * sampling_ratio)) for size in test_sizes]
+                
+                total_train = sum(train_sizes)
+                total_val = sum(val_sizes)
+                total_test = sum(test_sizes)
+                total_sampled_train = sum(train_keep_per_dataset)
+                total_sampled_val = sum(val_keep_per_dataset)
+                total_sampled_test = sum(test_keep_per_dataset)
+                
+                log(f"Data sampling enabled (multi-dataset): using {sampling_ratio*100:.0f}% of all data")
+                log(f"  Training: {total_sampled_train}/{total_train} graphs")
+                log(f"  Validation: {total_sampled_val}/{total_val} graphs")
+                log(f"  Test: {total_sampled_test}/{total_test} graphs")
                 
                 # Apply sampling to each dataset
-                train_data = [ds[:train_keep_per_dataset] for ds in train_data]
+                train_data = [ds[:keep] for ds, keep in zip(train_data, train_keep_per_dataset)]
+                val_data = [ds[:keep] for ds, keep in zip(val_data, val_keep_per_dataset)]
+                test_data = [ds[:keep] for ds, keep in zip(test_data, test_keep_per_dataset)]
             else:
-                # Single dataset case: train_data is [[actual_data_list]]
-                actual_train_data = train_data[0]  # Extract the inner list
+                # Single dataset case: data is [[actual_data_list]]
+                actual_train_data = train_data[0]
+                actual_val_data = val_data[0]
+                actual_test_data = test_data[0]
+                
                 train_size = len(actual_train_data)
+                val_size = len(actual_val_data)
+                test_size = len(actual_test_data)
+                
                 train_keep = max(1, int(train_size * sampling_ratio))
+                val_keep = max(1, int(val_size * sampling_ratio))
+                test_keep = max(1, int(test_size * sampling_ratio))
                 
-                log(f"Data sampling enabled: using {sampling_ratio*100:.0f}% of training data")
+                log(f"Data sampling enabled: using {sampling_ratio*100:.0f}% of all datasets")
                 log(f"  Training: {train_keep}/{train_size} graphs")
-                log(f"  Validation & Test: keeping full datasets for accurate evaluation")
+                log(f"  Validation: {val_keep}/{val_size} graphs")
+                log(f"  Test: {test_keep}/{test_size} graphs")
                 
-                # Apply sampling to training set only (best practice for evaluation integrity)
-                train_data = [actual_train_data[:train_keep]]  # Wrap back in outer list
-                
+                # Apply sampling to all datasets
+                train_data = [actual_train_data[:train_keep]]
+                val_data = [actual_val_data[:val_keep]]
+                test_data = [actual_test_data[:test_keep]]
+
     full_data = get_full_data([train_data, val_data, test_data])
 
     max_node = torch.cat([full_data.src, full_data.dst]).max().item() + 1
