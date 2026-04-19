@@ -114,6 +114,15 @@ def load_all_datasets(cfg, device, only_keep=None):
     val_data = load_data_set(cfg, split="val", multi_dataset=multi_dataset)
     test_data = load_data_set(cfg, split="test", multi_dataset=False)
 
+    # Apply data sampling if configured
+    sampling_ratio = getattr(cfg.batching, 'data_sampling_ratio', 1.0)
+    if sampling_ratio < 1.0 and sampling_ratio > 0.0:
+        if only_keep is None:
+            # Calculate only_keep based on sampling ratio for training data
+            train_size = len(train_data) if isinstance(train_data, list) else len(train_data[0]) if train_data else 0
+            only_keep = max(1, int(train_size * sampling_ratio))
+            log(f"Data sampling enabled: using {sampling_ratio*100:.0f}% of training data ({only_keep} graphs)")
+    
     if only_keep is not None:
         train_data = train_data[:only_keep]
         val_data = val_data[:only_keep]

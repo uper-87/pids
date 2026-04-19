@@ -753,6 +753,11 @@ TASK_ARGS = {
             desc="Whether to store the graphs on disk upon building the graphs. \
             Used to avoid re-computation of very complex batching operations that take time. Can take up to 300GB storage for CADETS_E5.",
         ),
+        "data_sampling_ratio": Arg(
+            float,
+            default=1.0,
+            desc="Ratio of training data to use (0.0-1.0). Set to 0.25 to use only 25% of data to reduce memory usage.",
+        ),
         "node_features": Arg(
             str,
             vals=AND(["node_type", "node_emb", "only_ones", "edges_distribution"]),

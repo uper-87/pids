@@ -35,6 +35,7 @@ feat_inference:
 
 batching:
   save_on_disk: False
+  data_sampling_ratio: 0.25
   node_features: node_emb,node_type
   edge_features: edge_type
   fix_buggy_graph_reindexer: False
