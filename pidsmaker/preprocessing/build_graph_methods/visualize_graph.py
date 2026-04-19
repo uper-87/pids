@@ -159,13 +159,70 @@ def visualize_graph(graph_path, num_nodes=30):
         fig_height = max(8, actual_num_nodes * 0.3)
         plt.figure(figsize=(fig_width, fig_height))
         
-        # 使用更优的布局算法，增加迭代次数以获得更好的布局
-        pos = nx.spring_layout(
-            subgraph, 
-            seed=42, 
-            k=2.0 / (actual_num_nodes ** 0.5),  # 动态调整斥力系数
-            iterations=100  # 增加迭代次数
-        )
+        # 检测连通分量（兼容有向图和无向图）
+        if isinstance(subgraph, (nx.DiGraph, nx.MultiDiGraph)):
+            # 有向图使用弱连通分量
+            connected_components = list(nx.weakly_connected_components(subgraph))
+        else:
+            # 无向图使用标准连通分量
+            connected_components = list(nx.connected_components(subgraph))
+        
+        num_components = len(connected_components)
+        
+        if num_components > 1:
+            print(f"检测到 {num_components} 个连通分量，使用优化的布局策略...")
+            
+            # 找到最大的连通分量
+            largest_component = max(connected_components, key=len)
+            largest_subgraph = subgraph.subgraph(largest_component)
+            
+            # 为最大连通分量使用 spring_layout
+            pos_largest = nx.spring_layout(
+                largest_subgraph, 
+                seed=42, 
+                k=2.0 / (len(largest_component) ** 0.5),
+                iterations=100
+            )
+            
+            # 为其他小分量分配位置
+            pos_other = {}
+            offset_x = max(pos_largest.values(), key=lambda p: p[0])[0] + 3.0 if pos_largest else 0
+            offset_y = 0
+            
+            for i, component in enumerate(connected_components):
+                if component == largest_component:
+                    continue
+                
+                comp_subgraph = subgraph.subgraph(component)
+                if len(component) == 1:
+                    # 孤立节点
+                    node = list(component)[0]
+                    pos_other[node] = (offset_x, offset_y)
+                    offset_y += 2.0
+                else:
+                    # 小连通分量
+                    comp_pos = nx.spring_layout(
+                        comp_subgraph, 
+                        seed=42, 
+                        k=1.5 / (len(component) ** 0.5),
+                        iterations=50
+                    )
+                    # 平移位置
+                    for node, (x, y) in comp_pos.items():
+                        pos_other[node] = (x + offset_x, y + offset_y)
+                    offset_x += 3.0
+                    offset_y = 0
+            
+            # 合并位置
+            pos = {**pos_largest, **pos_other}
+        else:
+            # 单个连通分量，使用标准布局
+            pos = nx.spring_layout(
+                subgraph, 
+                seed=42, 
+                k=2.0 / (actual_num_nodes ** 0.5),  # 动态调整斥力系数
+                iterations=100  # 增加迭代次数
+            )
         
         # 根据节点数量动态调整节点和字体大小
         node_size = max(200, 800 - actual_num_nodes * 10)

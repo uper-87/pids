@@ -755,7 +755,6 @@ TASK_ARGS = {
         ),
         "data_sampling_ratio": Arg(
             float,
-            default=1.0,
             desc="Ratio of training data to use (0.0-1.0). Set to 0.25 to use only 25% of data to reduce memory usage.",
         ),
         "node_features": Arg(
