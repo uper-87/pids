@@ -16,6 +16,10 @@ import shutil
 import time
 from collections import defaultdict
 
+# Configure CUDA memory allocation to reduce fragmentation and avoid OOM on large graphs
+# This must be set BEFORE importing torch
+os.environ.setdefault('PYTORCH_CUDA_ALLOC_CONF', 'max_split_size_mb:128,expandable_segments:True')
+
 import torch
 import wandb
 
